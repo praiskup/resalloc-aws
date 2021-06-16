@@ -1,0 +1,227 @@
+#! /usr/bin/bash
+
+# According to given RESALLOC_NAME, start a new Copr builder VM instance in
+# the AWS cloud.
+
+. "@eimgdatadir@"/lib || exit 1
+. /etc/eimg/eimg.sh || exit 1
+
+aws=(
+    aws --profile "$EIMG_CLOUD_AWS_PROFILE"
+        --output text
+        --query 'Instances[0].InstanceId'
+)
+
+set -e
+
+show_help()
+{
+cat <<EOHELP >&2
+Usage: $0 --arch ARCH [OPTIONS]
+
+Script is aimed to help sysadmin.
+
+Instead of --name, you can use \$RESALLOC_NAME env var.
+
+Options:
+  --name NAME           Name of the started VM instance
+  --ami, -i             Start the VM from this AMI.
+  --initial-preparation Start the vm and perform an initial set of actions on a
+                        fresh Fedora Cloud image (given by AMI_ID) so we can
+                        later generate a new AMI from that VM.
+  --prepare-image       Create a new AMI image from the started VM.
+  --arch ARCH           Architecture, currently x86_64 or aarch64 is supported.
+  --spot-price          Start a spot instance, instead of (default) on-demand,
+                        with the given maximal price per hour.
+  --playbook PLAYBOOK   Use this playbook, instead of the pre-configured one.
+EOHELP
+
+test -z "$1" || exit "$1"
+}
+
+info() { echo >&2 " * $*" ; }
+debug() { echo >&2 " - $*" ; }
+
+# handle no arguments
+test "${#@}" -eq 0 && show_help 1
+
+long_opts="name:,arch:,ami:,initial-preparation,prepare-image,help,spot-price:,\
+playbook:"
+ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
+
+# is that necessary -> should preserve whitespaces in option arguments
+# see: http://linuxwell.com/2011/07/14/getopt-in-bash/
+eval set -- "$ARGS"
+
+opt_initial_preparation=false
+opt_prepare_image=false
+opt_ami=
+opt_name=$RESALLOC_NAME
+opt_arch=x86_64
+opt_spot_price=
+opt_playbook=
+
+instance_id=
+
+while true; do
+    # now the name is in $1 and argument in $2
+    case $1 in
+    -h|--help)
+        show_help 0
+        ;;
+
+    --name|--arch|--prepare-image|--ami|--spot-price|--playbook)
+        opt=${1##--}
+        opt=${opt##-}
+        opt=${opt//-/_}
+        eval "opt_$opt=\$2"
+        shift 2
+        ;;
+
+    --initial-preparation|--prepare-image)
+        opt=${1##--}
+        opt=${opt##-}
+        opt=${opt//-/_}
+        eval "opt_$opt=:"
+        shift
+        ;;
+
+    --) shift; break ;;  # end
+    *) echo "programmer mistake ($1)" >&2; exit 1 ;;
+    esac
+done
+
+test -z "$opt_name" && {
+    info "\$RESALLOC_NAME or --name required"
+    show_help 1
+}
+
+info "Instance Name: $opt_name"
+
+mkdir -p /tmp/eimg-aws-start/
+workdir=$(mktemp -d /tmp/eimg-aws-start/attempt-XXXXXXXX)
+logfile=$workdir/playbook.log
+cleanup_vm=true
+cleanup()
+{
+    if $cleanup_vm && test -n "$instance_id"; then
+        # cleanup the VM we failed to start, but keep logs
+        info "removing $instance_id"
+        "${aws[@]}" ec2 terminate-instances --instance-ids "$instance_id"
+    else
+        # Remove the logs in case of *no* problem happened ...
+        case $workdir in
+            /tmp/*) rm -rf "$workdir" ;;
+        esac
+    fi
+}
+trap cleanup EXIT
+
+tagspec()
+{
+    tagsep=
+    tagspec_result=
+    for tag in "$@"; do
+        old_IFS=$IFS
+        IFS='='
+        set -- $tag
+        tagspec_result+="${tagsep}{Key=$1,Value=$2}"
+        tagsep=,
+        IFS=$old_IFS
+    done
+}
+
+tagspec "Name=$opt_name" $EIMG_CLOUD_AWS_TAGS
+
+start_opts=(
+    --key-name "$EIMG_CLOUD_AWS_KEY"
+    --security-group-ids "$EIMG_CLOUD_AWS_SECURITY_GROUP"
+    --tag-specifications "ResourceType=instance,Tags=[$tagspec_result]"
+    --count 1
+)
+
+subnets=
+playbook=
+case $opt_arch in
+x86_64)
+    start_opts+=(
+        --image-id "$EIMG_COPR_AWS_AMI_X86_64"
+        --instance-type "$EIMG_CLOUD_AWS_INSTANCE_TYPE_X86_64"
+    )
+    subnets=$EIMG_CLOUD_AWS_SUBNETS_X86_64
+    ;;
+aarch64)
+    start_opts+=(
+        --image-id "$EIMG_COPR_AWS_AMI_AARCH64"
+        --instance-type "$EIMG_CLOUD_AWS_INSTANCE_TYPE_AARCH64"
+    )
+    subnets=$EIMG_CLOUD_AWS_SUBNETS_AARCH64
+    ;;
+*)
+    info "specify a correct --arch"
+    show_help 1
+    ;;
+esac
+
+# We pick a random subnet from the given options, this brings a lower chance of
+# subsequent script failure in case of some temporary datacenter failure.
+set -- $subnets
+subnet_count=$#
+pick_subnet=$(( RANDOM % subnet_count ))
+eval 'subnet_id=${'"$pick_subnet"'}'
+start_opts+=( --subnet-id "$subnet_id" )
+
+if test -n "$opt_spot_price"; then
+    market_options="MarketType=spot,SpotOptions={MaxPrice=$opt_spot_price,\
+InstanceInterruptionBehavior=terminate,SpotInstanceType=one-time}"
+    start_opts+=( --instance-market-options "$market_options" )
+fi
+
+aws_cmd=( "${aws[@]}" ec2 run-instances "${start_opts[@]}" )
+debug "running ${aws_cmd[*]}"
+
+instance_id=$( "${aws_cmd[@]}" )
+info "Instance ID: $instance_id"
+test -n "$instance_id"
+
+ip_address=$(
+    "${aws[@]}" ec2 describe-instances \
+    --query "Reservations[*].Instances[*].PublicIpAddress" \
+    --instance-ids "$instance_id"
+)
+
+case $ip_address in
+    *.*.*.*) ;;
+    *) info "bad ip address $ip_address" ; false ;;
+esac
+
+info "Instance IP: $ip_address"
+
+info "waiting for ssh ..."
+
+@bindir@/wait-for-ssh --check-cloud-user --timeout 300 "$ip_address"
+
+playbook_opts=()
+$opt_initial_preparation && playbook_opts+=( "-e" "prepare_base_image=1" )
+
+playbook=$EIMG_COPR_PLAYBOOK_DIR$EIMG_COPR_PLAYBOOK
+test -n "$opt_playbook" && playbook=$opt_playbook
+
+ansible-playbook -i "$ip_address," "$playbook" "${playbook_opts[@]}"
+
+if $opt_prepare_image; then
+    new_image_name=copr-builder-$opt_arch-$(date +"%Y%m%d_%H%M%S")
+    tagspec "Name=$new_image_name"
+    image_id_cmd=(
+        "${aws[@]}" ec2 create-image
+        --instance-id "$instance_id"
+        --output text
+        --tag-specifications "ResourceType=image,Tags=[$tagspec_result]"
+    )
+
+    info "Preparing image $new_image_name"
+    debug "Running: ${image_id_cmd[*]}"
+    "${image_id_cmd[@]}"
+else
+    cleanup_vm=false
+fi
