@@ -34,6 +34,8 @@ Options:
   --spot-price          Start a spot instance, instead of (default) on-demand,
                         with the given maximal price per hour.
   --playbook PLAYBOOK   Use this playbook, instead of the pre-configured one.
+  --additional-volume-size GB
+                        Allocate additional volume of given size.
 EOHELP
 
 test -z "$1" || exit "$1"
@@ -54,6 +56,7 @@ ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
 eval set -- "$ARGS"
 
 opt_initial_preparation=false
+opt_additional_volume_size=
 opt_prepare_image=false
 opt_ami=
 opt_name=$RESALLOC_NAME
@@ -175,6 +178,11 @@ if test -n "$opt_spot_price"; then
     market_options="MarketType=spot,SpotOptions={MaxPrice=$opt_spot_price,\
 InstanceInterruptionBehavior=terminate,SpotInstanceType=one-time}"
     start_opts+=( --instance-market-options "$market_options" )
+fi
+
+
+if test -n "$opt_additional_volume_size"; then
+    start_opts+=( --block-device-mappings "DeviceName=/dev/sdb,Ebs={DeleteOnTermination=true,VolumeSize=$opt_additional_volume_size,VolumeType=gp2}" )
 fi
 
 aws_cmd=( "${aws[@]}" ec2 run-instances "${start_opts[@]}" )
