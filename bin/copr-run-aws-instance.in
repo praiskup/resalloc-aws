@@ -37,19 +37,28 @@ Options:
   --additional-volume-size GB
                         Allocate additional volume of given size.
   --private-ip          This VM starts on private IP, work over private IP.
+  --debug               Print debugging info.
 EOHELP
 
 test -z "$1" || exit "$1"
 }
 
+opt_debug=false
+
 info() { echo >&2 " * $*" ; }
-debug() { echo >&2 " - $*" ; }
+debug() { if $opt_debug; then echo >&2 " - $*" ; fi }
+
+run_cmd()
+{
+    debug "running $*"
+    "$@"
+}
 
 # handle no arguments
 test "${#@}" -eq 0 && show_help 1
 
 long_opts="name:,arch:,ami:,initial-preparation,prepare-image,help,spot-price:,\
-playbook:,private-ip"
+playbook:,private-ip,debug"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
 
 # is that necessary -> should preserve whitespaces in option arguments
@@ -83,7 +92,7 @@ while true; do
         shift 2
         ;;
 
-    --initial-preparation|--prepare-image|--private-ip)
+    --initial-preparation|--prepare-image|--private-ip|--debug)
         opt=${1##--}
         opt=${opt##-}
         opt=${opt//-/_}
@@ -112,7 +121,7 @@ cleanup()
     if $cleanup_vm && test -n "$instance_id"; then
         # cleanup the VM we failed to start, but keep logs
         info "removing $instance_id"
-        "${aws[@]}" ec2 terminate-instances --instance-ids "$instance_id"
+        run_cmd "${aws[@]}" ec2 terminate-instances --instance-ids "$instance_id"
     else
         # Remove the logs in case of *no* problem happened ...
         case $workdir in
@@ -189,16 +198,14 @@ if test -n "$opt_additional_volume_size"; then
 fi
 
 aws_cmd=( "${aws[@]}" ec2 run-instances "${start_opts[@]}" )
-debug "running ${aws_cmd[*]}"
-
-instance_id=$( "${aws_cmd[@]}" )
+instance_id=$( run_cmd "${aws_cmd[@]}" )
 info "Instance ID: $instance_id"
 test -n "$instance_id"
 
 ip_type=Public
 $opt_private_ip && ip_type=Private
 ip_address=$(
-    "${aws[@]}" ec2 describe-instances \
+    run_cmd "${aws[@]}" ec2 describe-instances \
     --query "Reservations[*].Instances[*].${ip_type}IpAddress" \
     --instance-ids "$instance_id"
 )
@@ -212,7 +219,7 @@ info "Instance IP: $ip_address"
 
 info "waiting for ssh ..."
 
-@bindir@/wait-for-ssh --check-cloud-user --timeout 300 "$ip_address"
+run_cmd @bindir@/wait-for-ssh --check-cloud-user --timeout 300 "$ip_address"
 
 playbook_opts=()
 $opt_initial_preparation && playbook_opts+=( "-e" "prepare_base_image=1" )
@@ -220,7 +227,7 @@ $opt_initial_preparation && playbook_opts+=( "-e" "prepare_base_image=1" )
 playbook=$EIMG_COPR_PLAYBOOK_DIR$EIMG_COPR_PLAYBOOK
 test -n "$opt_playbook" && playbook=$opt_playbook
 
-ansible-playbook -i "$ip_address," "$playbook" "${playbook_opts[@]}"
+run_cmd ansible-playbook -i "$ip_address," "$playbook" "${playbook_opts[@]}"
 
 if $opt_prepare_image; then
     new_image_name=copr-builder-$opt_arch-$(date +"%Y%m%d_%H%M%S")
@@ -233,8 +240,7 @@ if $opt_prepare_image; then
     )
 
     info "Preparing image $new_image_name"
-    debug "Running: ${image_id_cmd[*]}"
-    "${image_id_cmd[@]}"
+    run_cmd "${image_id_cmd[@]}"
 else
     cleanup_vm=false
 fi
