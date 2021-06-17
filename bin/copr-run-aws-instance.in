@@ -224,7 +224,7 @@ run_cmd @bindir@/wait-for-ssh --check-cloud-user --timeout 300 "$ip_address"
 playbook_opts=()
 $opt_initial_preparation && playbook_opts+=( "-e" "prepare_base_image=1" )
 
-playbook=$EIMG_COPR_PLAYBOOK_DIR$EIMG_COPR_PLAYBOOK
+playbook=$EIMG_COPR_PLAYBOOK_DIR/$EIMG_COPR_PLAYBOOK
 test -n "$opt_playbook" && playbook=$opt_playbook
 
 run_cmd ansible-playbook -i "$ip_address," "$playbook" "${playbook_opts[@]}"
