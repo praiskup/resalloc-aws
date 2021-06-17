@@ -58,7 +58,7 @@ run_cmd()
 test "${#@}" -eq 0 && show_help 1
 
 long_opts="name:,arch:,ami:,initial-preparation,prepare-image,help,spot-price:,\
-playbook:,private-ip,debug"
+playbook:,private-ip,debug,additional-volume-size:"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
 
 # is that necessary -> should preserve whitespaces in option arguments
@@ -84,7 +84,7 @@ while true; do
         show_help 0
         ;;
 
-    --name|--arch|--prepare-image|--ami|--spot-price|--playbook)
+    --name|--arch|--prepare-image|--ami|--spot-price|--playbook|--additional-volume-size)
         opt=${1##--}
         opt=${opt##-}
         opt=${opt//-/_}
