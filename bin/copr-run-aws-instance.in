@@ -9,7 +9,6 @@
 aws=(
     aws --profile "$EIMG_CLOUD_AWS_PROFILE"
         --output text
-        --query 'Instances[0].InstanceId'
 )
 
 set -e
@@ -152,6 +151,7 @@ start_opts=(
     --security-group-ids "$EIMG_CLOUD_AWS_SECURITY_GROUP"
     --tag-specifications "ResourceType=instance,Tags=[$tagspec_result]"
     --count 1
+    --query 'Instances[0].InstanceId'
 )
 
 subnets=()
@@ -231,7 +231,7 @@ run_cmd ansible-playbook -i "$ip_address," "$playbook" "${playbook_opts[@]}"
 
 if $opt_prepare_image; then
     new_image_name=copr-builder-$opt_arch-$(date +"%Y%m%d_%H%M%S")
-    tagspec "Name=$new_image_name"
+    tagspec "Name=$new_image_name" $EIMG_CLOUD_AWS_TAGS
     image_id_cmd=(
         "${aws[@]}" ec2 create-image
         --instance-id "$instance_id"
@@ -241,7 +241,8 @@ if $opt_prepare_image; then
     )
 
     info "Preparing image $new_image_name"
-    run_cmd "${image_id_cmd[@]}"
+    image_id=$( run_cmd "${image_id_cmd[@]}" )
+    test -n "$image_id"
 else
     cleanup_vm=false
 fi
