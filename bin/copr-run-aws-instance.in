@@ -235,6 +235,7 @@ if $opt_prepare_image; then
     image_id_cmd=(
         "${aws[@]}" ec2 create-image
         --instance-id "$instance_id"
+        --name "$new_image_name"
         --output text
         --tag-specifications "ResourceType=image,Tags=[$tagspec_result]"
     )
