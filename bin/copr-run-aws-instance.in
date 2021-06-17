@@ -31,11 +31,12 @@ Options:
                         later generate a new AMI from that VM.
   --prepare-image       Create a new AMI image from the started VM.
   --arch ARCH           Architecture, currently x86_64 or aarch64 is supported.
-  --spot-price          Start a spot instance, instead of (default) on-demand,
+  --spot-price PRICE    Start a spot instance, instead of (default) on-demand,
                         with the given maximal price per hour.
   --playbook PLAYBOOK   Use this playbook, instead of the pre-configured one.
   --additional-volume-size GB
                         Allocate additional volume of given size.
+  --private-ip          This VM starts on private IP, work over private IP.
 EOHELP
 
 test -z "$1" || exit "$1"
@@ -48,7 +49,7 @@ debug() { echo >&2 " - $*" ; }
 test "${#@}" -eq 0 && show_help 1
 
 long_opts="name:,arch:,ami:,initial-preparation,prepare-image,help,spot-price:,\
-playbook:"
+playbook:,private-ip"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
 
 # is that necessary -> should preserve whitespaces in option arguments
@@ -63,6 +64,7 @@ opt_name=$RESALLOC_NAME
 opt_arch=x86_64
 opt_spot_price=
 opt_playbook=
+opt_private_ip=false
 
 instance_id=
 
@@ -81,7 +83,7 @@ while true; do
         shift 2
         ;;
 
-    --initial-preparation|--prepare-image)
+    --initial-preparation|--prepare-image|--private-ip)
         opt=${1##--}
         opt=${opt##-}
         opt=${opt//-/_}
@@ -192,9 +194,11 @@ instance_id=$( "${aws_cmd[@]}" )
 info "Instance ID: $instance_id"
 test -n "$instance_id"
 
+ip_type=Public
+$opt_private_ip && ip_type=Private
 ip_address=$(
     "${aws[@]}" ec2 describe-instances \
-    --query "Reservations[*].Instances[*].PublicIpAddress" \
+    --query "Reservations[*].Instances[*].${ip_type}IpAddress" \
     --instance-ids "$instance_id"
 )
 
