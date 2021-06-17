@@ -84,7 +84,7 @@ while true; do
         show_help 0
         ;;
 
-    --name|--arch|--prepare-image|--ami|--spot-price|--playbook|--additional-volume-size)
+    --name|--arch|--ami|--spot-price|--playbook|--additional-volume-size)
         opt=${1##--}
         opt=${opt##-}
         opt=${opt//-/_}
