@@ -243,6 +243,9 @@ if $opt_prepare_image; then
     info "Preparing image $new_image_name"
     image_id=$( run_cmd "${image_id_cmd[@]}" )
     test -n "$image_id"
+    info "Image ID: $image_id"
+    "${aws[@]}" ec2 wait image-available --image-ids "$image_id"
+
 else
     cleanup_vm=false
 fi
