@@ -42,9 +42,6 @@ run_cmd()
     "$@"
 }
 
-# handle no arguments
-test "${#@}" -eq 0 && show_help 1
-
 long_opts="name:,debug,help"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
 
@@ -84,7 +81,6 @@ test -z "$opt_name" && {
     info "\$RESALLOC_NAME or --name required"
     show_help 1
 }
-
 
 instance_id=$(
     run_cmd "${aws[@]}" ec2 describe-instances \
