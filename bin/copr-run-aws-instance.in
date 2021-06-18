@@ -24,7 +24,7 @@ Instead of --name, you can use \$RESALLOC_NAME env var.
 
 Options:
   --name NAME           Name of the started VM instance
-  --ami, -i             Start the VM from this AMI.
+  --ami IMAGE           Start the VM from this AMI.
   --initial-preparation Start the vm and perform an initial set of actions on a
                         fresh Fedora Cloud image (given by AMI_ID) so we can
                         later generate a new AMI from that VM.
@@ -176,6 +176,10 @@ aarch64)
     show_help 1
     ;;
 esac
+
+if test -n "$opt_ami"; then
+    start_opts+=( --image-id "$opt_ami" )
+fi
 
 # We pick a random subnet from the given options, this brings a lower chance of
 # subsequent script failure in case of some temporary datacenter failure.
