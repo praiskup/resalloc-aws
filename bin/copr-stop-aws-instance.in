@@ -1,0 +1,98 @@
+#! /usr/bin/bash
+
+# According to given RESALLOC_NAME, start a new Copr builder VM instance in
+# the AWS cloud.
+
+. "@eimgdatadir@"/lib || exit 1
+. /etc/eimg/eimg.sh || exit 1
+
+aws=(
+    aws --profile "$EIMG_CLOUD_AWS_PROFILE"
+        --output text
+)
+
+set -e
+
+show_help()
+{
+cat <<EOHELP >&2
+Usage: $0 [OPTIONS]
+
+Stop a Copr builder VM in AWS cloud, according to given options.
+
+Instead of --name, you can use \$RESALLOC_NAME env var.
+
+Options:
+  --name NAME           Name of the VM to be stopped.
+  --debug               Print debugging info.
+EOHELP
+
+test -z "$1" || exit "$1"
+}
+
+opt_debug=false
+opt_name=$RESALLOC_NAME
+
+info() { echo >&2 " * $*" ; }
+debug() { if $opt_debug; then echo >&2 " - $*" ; fi }
+
+run_cmd()
+{
+    debug "running $*"
+    "$@"
+}
+
+# handle no arguments
+test "${#@}" -eq 0 && show_help 1
+
+long_opts="name:,debug,help"
+ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
+
+# is that necessary -> should preserve whitespaces in option arguments
+# see: http://linuxwell.com/2011/07/14/getopt-in-bash/
+eval set -- "$ARGS"
+
+while true; do
+    # now the name is in $1 and argument in $2
+    case $1 in
+    -h|--help)
+        show_help 0
+        ;;
+
+    --name)
+        opt=${1##--}
+        opt=${opt##-}
+        opt=${opt//-/_}
+        eval "opt_$opt=\$2"
+        shift 2
+        ;;
+
+    --debug)
+        opt=${1##--}
+        opt=${opt##-}
+        opt=${opt//-/_}
+        eval "opt_$opt=:"
+        shift
+        ;;
+
+    --) shift; break ;;  # end
+    *) echo "programmer mistake ($1)" >&2; exit 1 ;;
+    esac
+done
+
+test -z "$opt_name" && {
+    info "\$RESALLOC_NAME or --name required"
+    show_help 1
+}
+
+
+instance_id=$(
+    run_cmd "${aws[@]}" ec2 describe-instances \
+    --filters "Name=tag:Name,Values=$opt_name" \
+    --output text \
+    --query 'Reservations[*].Instances[*].{Instance:InstanceId}'
+)
+
+test -n "$instance_id"
+info "Terminating instance ID: $instance_id"
+run_cmd "${aws[@]}" ec2 terminate-instances --instance-ids "$instance_id"
