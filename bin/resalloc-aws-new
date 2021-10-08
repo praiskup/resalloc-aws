@@ -24,6 +24,10 @@ Options:
   --ssh-key-name        Name of the uploaded SSH key uploaded to AWS.
   --security-group      Name of the AWS security group to place this in (AWS
                         firewall).
+  --instance-type INSTANCE_TYPE_ID
+                        The instance type of the instance to use, "flavor".
+                        Defines the parameters of the machine (CPU, ...),
+                        e.g. 'i3.large'.
   --possible-subnet SUBNET_ID
                         Allow using the given SUBNET_ID, for example
                         subnet-08d0b3168a353e3ee.  Required option.  This can
@@ -67,8 +71,16 @@ test "${#@}" -eq 0 && show_help 1
 
 long_opts="name:,arch:,ami:,initial-preparation,prepare-image,help,spot-price:,\
 playbook:,private-ip,debug,additional-volume-size:,print-ip,aws-profile:,\
-ssh-key-name:,security-group:,possible-subnet:"
+ssh-key-name:,security-group:,possible-subnet:,instance-type:"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
+
+mandatory_options="
+    --ami
+    --aws-profile
+    --instance-type
+    --ssh-key-name
+    --security-group
+"
 
 # is that necessary -> should preserve whitespaces in option arguments
 # see: http://linuxwell.com/2011/07/14/getopt-in-bash/
@@ -108,7 +120,7 @@ while true; do
         ;;
 
     --name|--arch|--ami|--spot-price|--playbook|--additional-volume-size|\
-    --aws-profile|--ssh-key-name|--security-group)
+    --aws-profile|--ssh-key-name|--security-group|--instance-type)
         option_variable "$1"
         eval "$option_variable_result=\$2"
         shift 2
@@ -139,7 +151,8 @@ test -z "$opt_name" && fatal_args '$RESALLOC_NAME or --name required'
 test -z "${opt_possible_subnet[*]}" && \
     fatal_args "at least one --possible-subnet required"
 
-for mandatory_option in --aws-profile --ssh-key-name --security-group; do
+for mandatory_option in $mandatory_options
+do
     option_variable "$mandatory_option"
     eval "test -z \$$option_variable_result" && \
         fatal_args "$mandatory_option is required"
@@ -199,26 +212,11 @@ start_opts=(
 
 subnets=()
 playbook=
-case $opt_arch in
-x86_64)
-    start_opts+=(
-        --image-id "${opt_ami:-$EIMG_COPR_AWS_AMI_X86_64}"
-        --instance-type "$EIMG_CLOUD_AWS_INSTANCE_TYPE_X86_64"
-    )
-    subnets=( "${opt_possible_subnet[@]}" )
-    ;;
-aarch64)
-    start_opts+=(
-        --image-id "${opt_ami:-$EIMG_COPR_AWS_AMI_AARCH64}"
-        --instance-type "$EIMG_CLOUD_AWS_INSTANCE_TYPE_AARCH64"
-    )
-    subnets=( "${opt_possible_subnet[@]}" )
-    ;;
-*)
-    info "specify a correct --arch"
-    show_help 1
-    ;;
-esac
+start_opts+=(
+    --image-id "${opt_ami}"
+    --instance-type "${opt_instance_type}"
+)
+subnets=( "${opt_possible_subnet[@]}" )
 
 # We pick a random subnet from the given options, this brings a lower chance of
 # subsequent script failure in case of some temporary datacenter failure.
