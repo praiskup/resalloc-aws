@@ -34,6 +34,9 @@ Options:
                         option can be used multiple times; if so - the allocated
                         instance uses just one of the given subnets, picked by
                         random.
+  --tag TAGNAME=VALUE
+                        Tag every resource started in EC2 with TAGNAME=VALUE.
+                        Can be used multiple times.
   --initial-preparation Start the vm and perform an initial set of actions on a
                         fresh Fedora Cloud image (given by AMI_ID) so we can
                         later generate a new AMI from that VM.
@@ -71,7 +74,7 @@ test "${#@}" -eq 0 && show_help 1
 
 long_opts="name:,arch:,ami:,initial-preparation,prepare-image,help,spot-price:,\
 playbook:,private-ip,debug,additional-volume-size:,print-ip,aws-profile:,\
-ssh-key-name:,security-group:,possible-subnet:,instance-type:"
+ssh-key-name:,security-group:,possible-subnet:,instance-type:,tag:"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
 
 mandatory_options="
@@ -99,9 +102,10 @@ opt_private_ip=false
 opt_print_ip=false
 opt_ssh_key_name=
 opt_security_group=
+opt_possible_subnet=()
+opt_tag=()
 
 instance_id=
-opt_possible_subnet=()
 
 option_variable()
 {
@@ -133,7 +137,7 @@ while true; do
         ;;
 
     # Array options
-    --possible-subnet)
+    --possible-subnet|--tag)
         option_variable "$1"
         eval "opt_value=( \"\${$option_variable_result[@]}\" )"
         opt_value+=( "$2" )
@@ -200,7 +204,7 @@ tagspec()
     done
 }
 
-tagspec "Name=$opt_name" $EIMG_CLOUD_AWS_TAGS
+tagspec "Name=$opt_name" "${opt_tag[@]}"
 
 start_opts=(
     --key-name "$opt_ssh_key_name"
@@ -272,7 +276,7 @@ run_cmd ansible-playbook -i "$ip_address," "$playbook" "${playbook_opts[@]}" >&2
 
 if $opt_prepare_image; then
     new_image_name=copr-builder-$opt_arch-$(date +"%Y%m%d_%H%M%S")
-    tagspec "Name=$new_image_name" $EIMG_CLOUD_AWS_TAGS
+    tagspec "Name=$new_image_name" "${opt_tag[@]}"
     image_id_cmd=(
         "${aws[@]}" ec2 create-image
         --instance-id "$instance_id"
