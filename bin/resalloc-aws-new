@@ -62,8 +62,9 @@ Options:
   --additional-volume-size GB
                         Allocate additional volume of given size.
   --private-ip          This VM starts on private IP, work over private IP.
-  --print-ip            Print the host IP, once finished.  This is the only
-                        output on stdout, and resalloc server requires it.
+  --no-print-ip         Don't print the detect IP on stdout (once finished).
+                        This is the only output on stdout, and resalloc server
+                        requires it.
   --debug               Print debugging info.
 EOHELP
 
@@ -87,7 +88,7 @@ run_cmd()
 test "${#@}" -eq 0 && show_help 1
 
 long_opts="name:,arch:,ami:,initial-preparation,prepare-image,help,spot-price:,\
-playbook:,private-ip,debug,additional-volume-size:,print-ip,aws-profile:,\
+playbook:,private-ip,debug,additional-volume-size:,no-print-ip,aws-profile:,\
 ssh-key-name:,security-group-id:,possible-subnet:,instance-type:,tag:"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
 
@@ -113,7 +114,7 @@ opt_arch=x86_64
 opt_spot_price=
 opt_playbook=
 opt_private_ip=false
-opt_print_ip=false
+opt_print_ip=true
 opt_ssh_key_name=
 opt_security_group_id=
 opt_possible_subnet=()
@@ -127,6 +128,10 @@ option_variable()
     opt=${1##--}
     opt=${opt##-}
     opt=${opt//-/_}
+    # drop the '--no' prefix
+    if test -n "$2"; then
+        opt=${opt//no_/}
+    fi
     option_variable_result=opt_$opt
 }
 
@@ -144,9 +149,15 @@ while true; do
         shift 2
         ;;
 
-    --initial-preparation|--prepare-image|--private-ip|--debug|--print-ip)
+    --initial-preparation|--prepare-image|--private-ip|--debug)
         option_variable "$1"
         eval "$option_variable_result=:"
+        shift
+        ;;
+
+    --no-print-ip)
+        option_variable "$1"
+        eval "$option_variable_result=false"
         shift
         ;;
 
