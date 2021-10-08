@@ -21,6 +21,7 @@ Options:
   --name NAME           Name of the started VM instance
   --ami IMAGE           Start the VM from this AMI.
   --aws-profile         Name of the aws profile, as defined in ~/.aws/config.
+  --ssh-key-name        Name of the uploaded SSH key uploaded to AWS.
   --initial-preparation Start the vm and perform an initial set of actions on a
                         fresh Fedora Cloud image (given by AMI_ID) so we can
                         later generate a new AMI from that VM.
@@ -44,6 +45,8 @@ opt_debug=false
 
 info() { echo >&2 " * $*" ; }
 debug() { if $opt_debug; then echo >&2 " - $*" ; fi }
+error() { echo -e >&2 "!!!\n!!! $*\n!!!\n"; }
+fatal_args () { error "$*"; show_help 1 ; }
 
 run_cmd()
 {
@@ -55,7 +58,8 @@ run_cmd()
 test "${#@}" -eq 0 && show_help 1
 
 long_opts="name:,arch:,ami:,initial-preparation,prepare-image,help,spot-price:,\
-playbook:,private-ip,debug,additional-volume-size:,print-ip,aws-profile:"
+playbook:,private-ip,debug,additional-volume-size:,print-ip,aws-profile:,\
+ssh-key-name:"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
 
 # is that necessary -> should preserve whitespaces in option arguments
@@ -73,8 +77,18 @@ opt_spot_price=
 opt_playbook=
 opt_private_ip=false
 opt_print_ip=false
+opt_ssh_key_name=
 
 instance_id=
+
+option_variable()
+{
+    opt=$1
+    opt=${1##--}
+    opt=${opt##-}
+    opt=${opt//-/_}
+    option_variable_result=opt_$opt
+}
 
 while true; do
     # now the name is in $1 and argument in $2
@@ -84,19 +98,15 @@ while true; do
         ;;
 
     --name|--arch|--ami|--spot-price|--playbook|--additional-volume-size|\
-    --aws-profile)
-        opt=${1##--}
-        opt=${opt##-}
-        opt=${opt//-/_}
-        eval "opt_$opt=\$2"
+    --aws-profile|--ssh-key-name)
+        option_variable "$1"
+        eval "$option_variable_result=\$2"
         shift 2
         ;;
 
     --initial-preparation|--prepare-image|--private-ip|--debug|--print-ip)
-        opt=${1##--}
-        opt=${opt##-}
-        opt=${opt//-/_}
-        eval "opt_$opt=:"
+        option_variable "$1"
+        eval "$option_variable_result=:"
         shift
         ;;
 
@@ -110,11 +120,11 @@ test -z "$opt_name" && {
     show_help 1
 }
 
-test -z "$opt_aws_profile" && {
-    info "--aws-profile is required"
-    show_help 1
-}
-
+for mandatory_option in --aws-profile --ssh-key-name; do
+    option_variable "$mandatory_option"
+    eval "test -z \$$option_variable_result" && \
+        fatal_args "$mandatory_option is required"
+done
 
 aws=(
     aws --profile "$opt_aws_profile"
@@ -161,7 +171,7 @@ tagspec()
 tagspec "Name=$opt_name" $EIMG_CLOUD_AWS_TAGS
 
 start_opts=(
-    --key-name "$EIMG_CLOUD_AWS_KEY"
+    --key-name "$opt_ssh_key_name"
     --security-group-ids "$EIMG_CLOUD_AWS_SECURITY_GROUP"
     --tag-specifications "ResourceType=instance,Tags=[$tagspec_result]"
     --count 1

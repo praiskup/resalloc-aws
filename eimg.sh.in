@@ -11,9 +11,6 @@ EIMG_COPR_AWS_AMI_AARCH64=ami-0b7d49fecf0c393a9
 EIMG_CLOUD_AWS_INSTANCE_TYPE_X86_64=i3.large
 EIMG_CLOUD_AWS_INSTANCE_TYPE_AARCH64=a1.xlarge
 
-# SSH key name uploaded to AWS
-EIMG_CLOUD_AWS_KEY=todo
-
 # Name of the security group to use.
 EIMG_CLOUD_AWS_SECURITY_GROUP=ssh-only
 
