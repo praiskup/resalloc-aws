@@ -80,7 +80,7 @@ fatal_args () { error "$*"; show_help 1 ; }
 
 run_cmd()
 {
-    debug "running $*"
+    debug "run_cmd: $*"
     "$@"
 }
 
