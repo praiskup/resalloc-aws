@@ -267,7 +267,7 @@ fi
 
 
 if test -n "$opt_additional_volume_size"; then
-    start_opts+=( --block-device-mappings "DeviceName=/dev/sdb,Ebs={DeleteOnTermination=true,VolumeSize=$opt_additional_volume_size,VolumeType=gp2}" )
+    start_opts+=( --block-device-mappings "DeviceName=/dev/sdd,Ebs={DeleteOnTermination=true,VolumeSize=$opt_additional_volume_size,VolumeType=gp2}" )
 fi
 
 aws_cmd=( "${aws[@]}" ec2 run-instances "${start_opts[@]}" )
