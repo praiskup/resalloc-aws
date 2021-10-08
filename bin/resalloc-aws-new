@@ -33,8 +33,9 @@ Options:
   --ami IMAGE           Start the VM from this AMI.
   --aws-profile         Name of the aws profile, as defined in ~/.aws/config.
   --ssh-key-name        Name of the uploaded SSH key uploaded to AWS.
-  --security-group      Name of the AWS security group to place this in (AWS
-                        firewall).
+  --security-group-id SGID
+                        ID of the AWS security group to place this in (AWS
+                        firewall), e.g. 'sg-0c3efdb676ced6d4f'.
   --instance-type INSTANCE_TYPE_ID
                         The instance type of the instance to use, "flavor".
                         Defines the parameters of the machine (CPU, ...),
@@ -85,7 +86,7 @@ test "${#@}" -eq 0 && show_help 1
 
 long_opts="name:,arch:,ami:,initial-preparation,prepare-image,help,spot-price:,\
 playbook:,private-ip,debug,additional-volume-size:,print-ip,aws-profile:,\
-ssh-key-name:,security-group:,possible-subnet:,instance-type:,tag:"
+ssh-key-name:,security-group-id:,possible-subnet:,instance-type:,tag:"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
 
 mandatory_options="
@@ -93,7 +94,7 @@ mandatory_options="
     --aws-profile
     --instance-type
     --ssh-key-name
-    --security-group
+    --security-group-id
 "
 
 # is that necessary -> should preserve whitespaces in option arguments
@@ -112,7 +113,7 @@ opt_playbook=
 opt_private_ip=false
 opt_print_ip=false
 opt_ssh_key_name=
-opt_security_group=
+opt_security_group_id=
 opt_possible_subnet=()
 opt_tag=()
 
@@ -135,7 +136,7 @@ while true; do
         ;;
 
     --name|--arch|--ami|--spot-price|--playbook|--additional-volume-size|\
-    --aws-profile|--ssh-key-name|--security-group|--instance-type)
+    --aws-profile|--ssh-key-name|--security-group-id|--instance-type)
         option_variable "$1"
         eval "$option_variable_result=\$2"
         shift 2
@@ -219,7 +220,7 @@ tagspec "Name=$opt_name" "${opt_tag[@]}"
 
 start_opts=(
     --key-name "$opt_ssh_key_name"
-    --security-group-ids "$opt_security_group"
+    --security-group-ids "$opt_security_group_id"
     --tag-specifications "ResourceType=instance,Tags=[$tagspec_result]"
     --count 1
     --query 'Instances[0].InstanceId'
