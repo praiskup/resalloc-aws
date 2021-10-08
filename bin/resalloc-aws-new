@@ -24,6 +24,12 @@ Options:
   --ssh-key-name        Name of the uploaded SSH key uploaded to AWS.
   --security-group      Name of the AWS security group to place this in (AWS
                         firewall).
+  --possible-subnet SUBNET_ID
+                        Allow using the given SUBNET_ID, for example
+                        subnet-08d0b3168a353e3ee.  Required option.  This can
+                        option can be used multiple times; if so - the allocated
+                        instance uses just one of the given subnets, picked by
+                        random.
   --initial-preparation Start the vm and perform an initial set of actions on a
                         fresh Fedora Cloud image (given by AMI_ID) so we can
                         later generate a new AMI from that VM.
@@ -61,7 +67,7 @@ test "${#@}" -eq 0 && show_help 1
 
 long_opts="name:,arch:,ami:,initial-preparation,prepare-image,help,spot-price:,\
 playbook:,private-ip,debug,additional-volume-size:,print-ip,aws-profile:,\
-ssh-key-name:,security-group:"
+ssh-key-name:,security-group:,possible-subnet:"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
 
 # is that necessary -> should preserve whitespaces in option arguments
@@ -83,6 +89,7 @@ opt_ssh_key_name=
 opt_security_group=
 
 instance_id=
+opt_possible_subnet=()
 
 option_variable()
 {
@@ -113,15 +120,24 @@ while true; do
         shift
         ;;
 
+    # Array options
+    --possible-subnet)
+        option_variable "$1"
+        eval "opt_value=( \"\${$option_variable_result[@]}\" )"
+        opt_value+=( "$2" )
+        eval "$option_variable_result"'=( "${opt_value[@]}" )'
+        shift 2
+        ;;
+
     --) shift; break ;;  # end
     *) echo "programmer mistake ($1)" >&2; exit 1 ;;
     esac
 done
 
-test -z "$opt_name" && {
-    info "\$RESALLOC_NAME or --name required"
-    show_help 1
-}
+test -z "$opt_name" && fatal_args '$RESALLOC_NAME or --name required'
+
+test -z "${opt_possible_subnet[*]}" && \
+    fatal_args "at least one --possible-subnet required"
 
 for mandatory_option in --aws-profile --ssh-key-name --security-group; do
     option_variable "$mandatory_option"
@@ -189,14 +205,14 @@ x86_64)
         --image-id "${opt_ami:-$EIMG_COPR_AWS_AMI_X86_64}"
         --instance-type "$EIMG_CLOUD_AWS_INSTANCE_TYPE_X86_64"
     )
-    subnets=( $EIMG_CLOUD_AWS_SUBNETS_X86_64 )
+    subnets=( "${opt_possible_subnet[@]}" )
     ;;
 aarch64)
     start_opts+=(
         --image-id "${opt_ami:-$EIMG_COPR_AWS_AMI_AARCH64}"
         --instance-type "$EIMG_CLOUD_AWS_INSTANCE_TYPE_AARCH64"
     )
-    subnets=( $EIMG_CLOUD_AWS_SUBNETS_AARCH64 )
+    subnets=( "${opt_possible_subnet[@]}" )
     ;;
 *)
     info "specify a correct --arch"
