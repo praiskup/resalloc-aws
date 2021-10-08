@@ -19,6 +19,8 @@
 
 set -e
 
+scriptdir=$(dirname "$(readlink -f "$0")")
+
 show_help()
 {
 cat <<EOHELP >&2
@@ -260,22 +262,28 @@ test -n "$instance_id"
 
 ip_type=Public
 $opt_private_ip && ip_type=Private
+
+info "Waiting till the IPv4 is assigned"
+for _ in $(seq 100); do
 ip_address=$(
     run_cmd "${aws[@]}" ec2 describe-instances \
     --query "Reservations[*].Instances[*].${ip_type}IpAddress" \
     --instance-ids "$instance_id"
 )
+test -n "$ip_address" && break
+sleep 2
+done
 
 case $ip_address in
     *.*.*.*) ;;
-    *) info "bad ip address $ip_address" ; false ;;
+    *) info "bad ip address: '$ip_address'" ; false ;;
 esac
 
 info "Instance IP: $ip_address"
 
 info "waiting for ssh ..."
 
-run_cmd @bindir@/wait-for-ssh --check-cloud-user --timeout 300 "$ip_address"
+run_cmd "$scriptdir/wait-for-ssh" --check-cloud-user --timeout 300 "$ip_address"
 
 if test -n "$opt_playbook"; then
     playbook_opts=()
