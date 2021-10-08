@@ -1,0 +1,42 @@
+EIMG_COPR_PLAYBOOK_DIR=@eimg_copr_playbook_dir@
+EIMG_COPR_PLAYBOOK=@eimg_copr_playbook@
+EIMG_ROOT_SHADOW=
+EIMG_ROOT_PASSWORD=
+EIMG_FINAL_SYSPREP_ARGS=()
+
+# Local configuration profile to use, see ~/.aws/ directory.
+EIMG_CLOUD_AWS_PROFILE=default
+
+# AMIs to use for starting Copr builders
+EIMG_COPR_AWS_AMI_X86_64=ami-05766cb7551777d09
+EIMG_COPR_AWS_AMI_AARCH64=ami-0b7d49fecf0c393a9
+
+EIMG_CLOUD_AWS_INSTANCE_TYPE_X86_64=i3.large
+EIMG_CLOUD_AWS_INSTANCE_TYPE_AARCH64=a1.xlarge
+
+# SSH key name uploaded to AWS
+EIMG_CLOUD_AWS_KEY=todo
+
+# Name of the security group to use.
+EIMG_CLOUD_AWS_SECURITY_GROUP=ssh-only
+
+# Randomly pick AWS subnet for x86_64 arch from these:
+EIMG_CLOUD_AWS_SUBNETS_X86_64="
+  subnet-0995f6a466849f4c3
+  subnet-08cadf5a14b530ac4
+  subnet-07b0b3168a353e3ee
+  subnet-09c74a3e6420a206b
+  subnet-01d4e967ab5e78005
+  subnet-05437ac82d63b6ef5
+"
+
+# Randomly pick AWS subnet for aarch64 arch from these:
+EIMG_CLOUD_AWS_SUBNETS_AARCH64="
+  subnet-0995f6a466849f4c3
+  subnet-08cadf5a14b530ac4
+  subnet-07b0b3168a353e3ee
+"
+
+EIMG_CLOUD_AWS_TAGS="
+  eimg=true
+"
