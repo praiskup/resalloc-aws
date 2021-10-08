@@ -4,9 +4,6 @@ EIMG_ROOT_SHADOW=
 EIMG_ROOT_PASSWORD=
 EIMG_FINAL_SYSPREP_ARGS=()
 
-# Local configuration profile to use, see ~/.aws/ directory.
-EIMG_CLOUD_AWS_PROFILE=default
-
 # AMIs to use for starting Copr builders
 EIMG_COPR_AWS_AMI_X86_64=ami-05766cb7551777d09
 EIMG_COPR_AWS_AMI_AARCH64=ami-0b7d49fecf0c393a9

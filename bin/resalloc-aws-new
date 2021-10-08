@@ -6,11 +6,6 @@
 . "@eimgdatadir@"/lib || exit 1
 . /etc/eimg/eimg.sh || exit 1
 
-aws=(
-    aws --profile "$EIMG_CLOUD_AWS_PROFILE"
-        --output text
-)
-
 set -e
 
 show_help()
@@ -25,6 +20,7 @@ Instead of --name, you can use \$RESALLOC_NAME env var.
 Options:
   --name NAME           Name of the started VM instance
   --ami IMAGE           Start the VM from this AMI.
+  --aws-profile         Name of the aws profile, as defined in ~/.aws/config.
   --initial-preparation Start the vm and perform an initial set of actions on a
                         fresh Fedora Cloud image (given by AMI_ID) so we can
                         later generate a new AMI from that VM.
@@ -59,7 +55,7 @@ run_cmd()
 test "${#@}" -eq 0 && show_help 1
 
 long_opts="name:,arch:,ami:,initial-preparation,prepare-image,help,spot-price:,\
-playbook:,private-ip,debug,additional-volume-size:,print-ip"
+playbook:,private-ip,debug,additional-volume-size:,print-ip,aws-profile:"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
 
 # is that necessary -> should preserve whitespaces in option arguments
@@ -70,6 +66,7 @@ opt_initial_preparation=false
 opt_additional_volume_size=
 opt_prepare_image=false
 opt_ami=
+opt_aws_profile=
 opt_name=$RESALLOC_NAME
 opt_arch=x86_64
 opt_spot_price=
@@ -86,7 +83,8 @@ while true; do
         show_help 0
         ;;
 
-    --name|--arch|--ami|--spot-price|--playbook|--additional-volume-size)
+    --name|--arch|--ami|--spot-price|--playbook|--additional-volume-size|\
+    --aws-profile)
         opt=${1##--}
         opt=${opt##-}
         opt=${opt//-/_}
@@ -111,6 +109,19 @@ test -z "$opt_name" && {
     info "\$RESALLOC_NAME or --name required"
     show_help 1
 }
+
+test -z "$opt_aws_profile" && {
+    info "--aws-profile is required"
+    show_help 1
+}
+
+
+aws=(
+    aws --profile "$opt_aws_profile"
+        --output text
+)
+
+debug "AWS base command '${aws[*]}'"
 
 info "Instance Name: $opt_name"
 
