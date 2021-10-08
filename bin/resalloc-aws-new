@@ -257,7 +257,7 @@ pick_subnet=$(( RANDOM % subnet_count ))
 eval 'subnet_id=${subnets['"$pick_subnet"']}'
 start_opts+=( --subnet-id "$subnet_id" )
 
-info "Subnet ID: $subnet_id"
+info "Subnet ID: $subnet_id (from ${subnets[*]})"
 
 if test -n "$opt_spot_price"; then
     market_options="MarketType=spot,SpotOptions={MaxPrice=$opt_spot_price,\
