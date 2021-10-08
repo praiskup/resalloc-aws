@@ -51,10 +51,15 @@ Options:
   --tag TAGNAME=VALUE
                         Tag every resource started in EC2 with TAGNAME=VALUE.
                         Can be used multiple times.
-  --initial-preparation Start the vm and perform an initial set of actions on a
-                        fresh Fedora Cloud image (given by AMI_ID) so we can
-                        later generate a new AMI from that VM.
-  --prepare-image       Create a new AMI image from the started VM.
+  --initial-preparation Start the vm and perform an initial set of actions
+                        (using playbook) on the fresh Fedora Cloud image (given
+                        by AMI_ID) so we can later generate a new AMI from that
+                        VM.  See also --create-snapshot-image.
+  --create-snapshot-image
+                        Create a new AMI image from the started VM.  Note that
+                        when --additional-volume-size is used - such volume is
+                        inherited and then automatically created upon
+                        instatiating the image.
   --arch ARCH           Architecture, currently x86_64 or aarch64 is supported.
   --spot-price PRICE    Start a spot instance, instead of (default) on-demand,
                         with the given maximal price per hour.
@@ -87,7 +92,7 @@ run_cmd()
 # handle no arguments
 test "${#@}" -eq 0 && show_help 1
 
-long_opts="name:,arch:,ami:,initial-preparation,prepare-image,help,spot-price:,\
+long_opts="name:,arch:,ami:,initial-preparation,create-snapshot-image,help,spot-price:,\
 playbook:,private-ip,debug,additional-volume-size:,no-print-ip,aws-profile:,\
 ssh-key-name:,security-group-id:,possible-subnet:,instance-type:,tag:"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
@@ -106,7 +111,7 @@ eval set -- "$ARGS"
 
 opt_initial_preparation=false
 opt_additional_volume_size=
-opt_prepare_image=false
+opt_create_snapshot_image=false
 opt_ami=
 opt_aws_profile=
 opt_name=$RESALLOC_NAME
@@ -149,7 +154,7 @@ while true; do
         shift 2
         ;;
 
-    --initial-preparation|--prepare-image|--private-ip|--debug)
+    --initial-preparation|--create-snapshot-image|--private-ip|--debug)
         option_variable "$1"
         eval "$option_variable_result=:"
         shift
@@ -187,8 +192,8 @@ do
         fatal_args "$mandatory_option is required"
 done
 
-if $opt_prepare_image && test -z "$opt_arch"; then
-    fatal_arg "--prepare-image requires --arch option"
+if $opt_create_snapshot_image && test -z "$opt_arch"; then
+    fatal_arg "--create-snapshot-image requires --arch option"
 fi
 
 aws=(
@@ -308,7 +313,7 @@ if test -n "$opt_playbook"; then
     run_cmd ansible-playbook -i "$ip_address," "$opt_playbook" "${playbook_opts[@]}" >&2
 fi
 
-if $opt_prepare_image; then
+if $opt_create_snapshot_image; then
     new_image_name=copr-builder-$opt_arch-$(date +"%Y%m%d_%H%M%S")
     tagspec "Name=$new_image_name" "${opt_tag[@]}"
     image_id_cmd=(
