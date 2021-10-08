@@ -200,8 +200,8 @@ debug "AWS base command '${aws[*]}'"
 
 info "Instance Name: $opt_name"
 
-mkdir -p /tmp/eimg-aws-start/
-workdir=$(mktemp -d /tmp/eimg-aws-start/attempt-XXXXXXXX)
+tmpdir=/tmp
+workdir=$(mktemp -d "$tmpdir"/resalloc-aws-start-attempt-XXXXXXXX)
 logfile=$workdir/playbook.log
 cleanup_vm=true
 cleanup()

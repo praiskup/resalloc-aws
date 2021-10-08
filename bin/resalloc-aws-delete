@@ -1,15 +1,21 @@
 #! /usr/bin/bash
 
-# According to given RESALLOC_NAME, start a new Copr builder VM instance in
-# the AWS cloud.
+# Ensure an AWS instance is terminated.  With Resalloc API
+# Copyright (C) 2021 Pavel Raiskup <praiskup@redhat.com>
 
-. "@eimgdatadir@"/lib || exit 1
-. /etc/eimg/eimg.sh || exit 1
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-aws=(
-    aws --profile "$EIMG_CLOUD_AWS_PROFILE"
-        --output text
-)
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 set -e
 
@@ -18,12 +24,13 @@ show_help()
 cat <<EOHELP >&2
 Usage: $0 [OPTIONS]
 
-Stop a Copr builder VM in AWS cloud, according to given options.
+Stop an AWS instance according to given options.
 
 Instead of --name, you can use \$RESALLOC_NAME env var.
 
 Options:
   --name NAME           Name of the VM to be stopped.
+  --aws-profile         Name of the aws profile, as defined in ~/.aws/config.
   --debug               Print debugging info.
 EOHELP
 
@@ -32,9 +39,12 @@ test -z "$1" || exit "$1"
 
 opt_debug=false
 opt_name=$RESALLOC_NAME
+opt_aws_profile=
 
 info() { echo >&2 " * $*" ; }
 debug() { if $opt_debug; then echo >&2 " - $*" ; fi }
+error() { echo -e >&2 "!!!\n!!! $*\n!!!\n"; }
+fatal_args () { error "$*"; show_help 1 ; }
 
 run_cmd()
 {
@@ -42,12 +52,29 @@ run_cmd()
     "$@"
 }
 
-long_opts="name:,debug,help"
+long_opts="name:,aws-profile:,debug,help"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
+
+mandatory_options="
+    --aws-profile
+"
 
 # is that necessary -> should preserve whitespaces in option arguments
 # see: http://linuxwell.com/2011/07/14/getopt-in-bash/
 eval set -- "$ARGS"
+
+option_variable()
+{
+    opt=$1
+    opt=${1##--}
+    opt=${opt##-}
+    opt=${opt//-/_}
+    # drop the '--no' prefix
+    if test -n "$2"; then
+        opt=${opt//no_/}
+    fi
+    option_variable_result=opt_$opt
+}
 
 while true; do
     # now the name is in $1 and argument in $2
@@ -56,19 +83,15 @@ while true; do
         show_help 0
         ;;
 
-    --name)
-        opt=${1##--}
-        opt=${opt##-}
-        opt=${opt//-/_}
-        eval "opt_$opt=\$2"
+    --name|--aws-profile)
+        option_variable "$1"
+        eval "$option_variable_result=\$2"
         shift 2
         ;;
 
     --debug)
-        opt=${1##--}
-        opt=${opt##-}
-        opt=${opt//-/_}
-        eval "opt_$opt=:"
+        option_variable "$1"
+        eval "$option_variable_result=:"
         shift
         ;;
 
@@ -77,10 +100,20 @@ while true; do
     esac
 done
 
-test -z "$opt_name" && {
-    info "\$RESALLOC_NAME or --name required"
-    show_help 1
-}
+test -z "$opt_name" && fatal_args "\$RESALLOC_NAME or --name required"
+
+for mandatory_option in $mandatory_options
+do
+    option_variable "$mandatory_option"
+    eval "test -z \$$option_variable_result" && \
+        fatal_args "$mandatory_option is required"
+done
+
+aws=(
+    aws --profile "$opt_aws_profile"
+        --output text
+)
+
 
 instance_id=$(
     run_cmd "${aws[@]}" ec2 describe-instances \
