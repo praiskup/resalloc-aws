@@ -215,7 +215,6 @@ start_opts=(
 )
 
 subnets=()
-playbook=
 start_opts+=(
     --image-id "${opt_ami}"
     --instance-type "${opt_instance_type}"
@@ -266,13 +265,11 @@ info "waiting for ssh ..."
 
 run_cmd @bindir@/wait-for-ssh --check-cloud-user --timeout 300 "$ip_address"
 
-playbook_opts=()
-$opt_initial_preparation && playbook_opts+=( "-e" "prepare_base_image=1" )
-
-playbook=$EIMG_COPR_PLAYBOOK_DIR/$EIMG_COPR_PLAYBOOK
-test -n "$opt_playbook" && playbook=$opt_playbook
-
-run_cmd ansible-playbook -i "$ip_address," "$playbook" "${playbook_opts[@]}" >&2
+if test -n "$opt_playbook"; then
+    playbook_opts=()
+    $opt_initial_preparation && playbook_opts+=( "-e" "prepare_base_image=1" )
+    run_cmd ansible-playbook -i "$ip_address," "$opt_playbook" "${playbook_opts[@]}" >&2
+fi
 
 if $opt_prepare_image; then
     new_image_name=copr-builder-$opt_arch-$(date +"%Y%m%d_%H%M%S")
