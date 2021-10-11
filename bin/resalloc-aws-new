@@ -24,7 +24,7 @@ scriptdir=$(dirname "$(readlink -f "$0")")
 show_help()
 {
 cat <<EOHELP >&2
-Usage: $0 --arch ARCH [OPTIONS]
+Usage: $0 [OPTIONS]
 
 Script is aimed to help sysadmin.
 
@@ -60,7 +60,6 @@ Options:
                         when --additional-volume-size is used - such volume is
                         inherited and then automatically created upon
                         instatiating the image.
-  --arch ARCH           Architecture, currently x86_64 or aarch64 is supported.
   --spot-price PRICE    Start a spot instance, instead of (default) on-demand,
                         with the given maximal price per hour.
   --playbook PLAYBOOK   Use this playbook, instead of the pre-configured one.
@@ -92,7 +91,7 @@ run_cmd()
 # handle no arguments
 test "${#@}" -eq 0 && show_help 1
 
-long_opts="name:,arch:,ami:,initial-preparation,create-snapshot-image,help,spot-price:,\
+long_opts="name:,ami:,initial-preparation,create-snapshot-image,help,spot-price:,\
 playbook:,private-ip,debug,additional-volume-size:,no-print-ip,aws-profile:,\
 ssh-key-name:,security-group-id:,possible-subnet:,instance-type:,tag:"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
@@ -115,7 +114,6 @@ opt_create_snapshot_image=false
 opt_ami=
 opt_aws_profile=
 opt_name=$RESALLOC_NAME
-opt_arch=
 opt_spot_price=
 opt_playbook=
 opt_private_ip=false
@@ -147,7 +145,7 @@ while true; do
         show_help 0
         ;;
 
-    --name|--arch|--ami|--spot-price|--playbook|--additional-volume-size|\
+    --name|--ami|--spot-price|--playbook|--additional-volume-size|\
     --aws-profile|--ssh-key-name|--security-group-id|--instance-type)
         option_variable "$1"
         eval "$option_variable_result=\$2"
@@ -191,10 +189,6 @@ do
     eval "test -z \$$option_variable_result" && \
         fatal_args "$mandatory_option is required"
 done
-
-if $opt_create_snapshot_image && test -z "$opt_arch"; then
-    fatal_arg "--create-snapshot-image requires --arch option"
-fi
 
 aws=(
     aws --profile "$opt_aws_profile"
@@ -314,7 +308,7 @@ if test -n "$opt_playbook"; then
 fi
 
 if $opt_create_snapshot_image; then
-    new_image_name=copr-builder-$opt_arch-$(date +"%Y%m%d_%H%M%S")
+    new_image_name=$opt_name-$(date +"%Y%m%d_%H%M%S")
     tagspec "Name=$new_image_name" "${opt_tag[@]}"
     image_id_cmd=(
         "${aws[@]}" ec2 create-image
