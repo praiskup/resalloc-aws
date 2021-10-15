@@ -1,6 +1,6 @@
 Name:       resalloc-aws
 Summary:    Resource allocator scripts for AWS
-Version:    1
+Version:    1.1
 Release:    1%{?dist}
 License:    GPLv2+
 URL:        https://github.com/praiskup/resalloc-aws
@@ -56,5 +56,8 @@ install -p -m 0755 %{name}-wait-for-ssh %{buildroot}%{_bindir}/resalloc-aws-wait
 
 
 %changelog
+* Fri Oct 15 2021 Pavel Raiskup <praiskup@redhat.com> 1.1-1
+- spec: package-review fixes (praiskup@redhat.com)
+
 * Tue Oct 12 2021 Pavel Raiskup <praiskup@redhat.com> 1-1
 - new package built with tito
