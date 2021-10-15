@@ -1,5 +1,3 @@
-%global srcname resalloc-aws
-
 Name:       resalloc-aws
 Summary:    Resource allocator scripts for AWS
 Version:    1
@@ -20,14 +18,14 @@ Source1: https://raw.githubusercontent.com/praiskup/wait-for-ssh/main/wait-for-s
 
 
 %description
-When allocating/removing machine in AWS/EC2 from command-line, there are many
+When allocating/removing a machine in AWS/EC2 from command-line, there are many
 non-trivial options in the 'aws-cli' command.  This project provides a
 simplified wrapping command.
 
-The 'resalloc-aws-new' script is able to (a) start the machine, (b) wait till
-SSH is available and (c) run a specified playbook.
+The 'resalloc-aws-new' script is able to (a) start a machine, (b) wait till SSH
+is available and (c) run a specified playbook.
 
-The 'resalloc-aws-delete' removes the machine started by 'resalloc-aws-new'
+The 'resalloc-aws-delete' removes a machine started by 'resalloc-aws-new'
 script.
 
 These scripts are primarily designed to be used with 'resalloc-server', but they
@@ -38,18 +36,23 @@ might be used separately.
 %setup -q
 
 
+%build
+sed '1c#! %{__python3}' %SOURCE1 > %{name}-wait-for-ssh
+
+
 %install
-mkdir -p %buildroot%_bindir
-install -p -m 0755 bin/resalloc-aws-new %buildroot/%_bindir
-install -p -m 0755 bin/resalloc-aws-delete %buildroot/%_bindir
-install -p -m 0755 %SOURCE1 %buildroot/%_bindir/resalloc-aws-wait-for-ssh
-sed '1c#! /usr/bin/python3' -i %buildroot/%_bindir/resalloc-aws-wait-for-ssh
+mkdir -p %{buildroot}%{_bindir}
+install -p -m 0755 bin/resalloc-aws-new %{buildroot}%{_bindir}
+install -p -m 0755 bin/resalloc-aws-delete %{buildroot}%{_bindir}
+install -p -m 0755 %{name}-wait-for-ssh %{buildroot}%{_bindir}/resalloc-aws-wait-for-ssh
 
 
 %files
 %license COPYING
 %doc README.md
-%{_bindir}/%{name}-*
+%{_bindir}/%{name}-delete
+%{_bindir}/%{name}-new
+%{_bindir}/%{name}-wait-for-ssh
 
 
 %changelog
