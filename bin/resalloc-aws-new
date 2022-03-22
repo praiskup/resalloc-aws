@@ -238,6 +238,7 @@ start_opts=(
     --key-name "$opt_ssh_key_name"
     --security-group-ids "$opt_security_group_id"
     --tag-specifications "ResourceType=instance,Tags=[$tagspec_result]"
+                         "ResourceType=volume,Tags=[$tagspec_result]"
     --count 1
     --query 'Instances[0].InstanceId'
 )
