@@ -1,6 +1,6 @@
 Name:       resalloc-aws
 Summary:    Resource allocator scripts for AWS
-Version:    1.2
+Version:    1.3
 Release:    1%{?dist}
 License:    GPLv2+
 URL:        https://github.com/praiskup/resalloc-aws
@@ -58,6 +58,9 @@ install -p -m 0755 %{name}-wait-for-ssh %{buildroot}%{_bindir}/resalloc-aws-wait
 
 
 %changelog
+* Wed Jun 22 2022 Pavel Raiskup <praiskup@redhat.com> 1.3-1
+- New script resalloc-aws-list
+
 * Tue Mar 22 2022 Pavel Raiskup <praiskup@redhat.com> 1.2-1
 - resalloc-aws-new: tag volumes started with new instances
 
