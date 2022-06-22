@@ -1,0 +1,126 @@
+#! /bin/bash
+
+# List AWS resources related to the given Resalloc pool
+# Copyright (C) 2021 Pavel Raiskup <praiskup@redhat.com>
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+
+info() { echo >&2 " * $*" ; }
+debug() { if $opt_debug; then echo >&2 " - $*" ; fi }
+error() { echo -e >&2 "!!!\n!!! $*\n!!!\n"; }
+fatal_args () { error "$*"; show_help 1 ; }
+
+show_help()
+{
+cat <<EOHELP >&2
+Usage: $0 [OPTIONS]
+
+Script is aimed list the AWS instances related to the given pool.
+
+Instead of --pool, you can use \$RESALLOC_POOL_ID env var.
+
+Options:
+  --pool NAME           The name (id) of resalloc pool.
+  --tag TAGNAME=VALUE   Filter the instances by this tag.
+  --aws-profile         Name of the aws profile, as defined in ~/.aws/config.
+  --help                Print this help.
+EOHELP
+
+test -z "$1" || exit "$1"
+}
+
+long_opts="pool:,tag:,aws-profile:,help"
+
+ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
+eval set -- "$ARGS"
+
+
+option_variable()
+{
+    opt=$1
+    opt=${1##--}
+    opt=${opt##-}
+    opt=${opt//-/_}
+    # drop the '--no' prefix
+    if test -n "$2"; then
+        opt=${opt//no_/}
+    fi
+    option_variable_result=opt_$opt
+}
+
+opt_aws_profile=default
+opt_pool=$RESALLOC_POOL_ID
+opt_tag=()
+
+
+while true; do
+    # now the name is in $1 and argument in $2
+    case $1 in
+    -h|--help)
+        show_help 0
+        ;;
+
+    --pool|--aws-profile)
+        option_variable "$1"
+        eval "$option_variable_result=\$2"
+        shift 2
+        ;;
+
+    # Array options
+    --tag)
+        option_variable "$1"
+        eval "opt_value=( \"\${$option_variable_result[@]}\" )"
+        opt_value+=( "$2" )
+        eval "$option_variable_result"'=( "${opt_value[@]}" )'
+        shift 2
+        ;;
+
+    --) shift; break ;;  # end
+    *) echo "programmer mistake ($1)" >&2; exit 1 ;;
+    esac
+done
+
+test -z "$opt_aws_profile" && fatal_args '--aws-profile required'
+test -z "$opt_pool" && fatal_args '$RESALLOC_POOL_ID or --pool required'
+
+tagsep=
+filters=()
+tagspec_result=()
+tag_found=false
+for tag in "${opt_tag[@]}"; do
+    tag_found=true
+    old_IFS=$IFS
+    IFS='='
+    set -- $tag
+    tagspec_result+=( "Name=tag:$1,Values=$2" )
+    tagsep=,
+    IFS=$old_IFS
+done
+if $tag_found; then
+    filters=( --filters "${tagspec_result[@]}" )
+fi
+
+cmd=(
+    aws --profile $opt_aws_profile
+    ec2 describe-instances
+    "${filters[@]}"
+    --output text
+    --query 'Reservations[*].Instances[*].Tags[?Key==`Name`].Value[]'
+)
+
+info "running: ${cmd[*]}"
+
+"${cmd[@]}" | grep "^$opt_pool"
