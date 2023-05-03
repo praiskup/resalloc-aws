@@ -265,10 +265,16 @@ InstanceInterruptionBehavior=terminate,SpotInstanceType=one-time}"
     start_opts+=( --instance-market-options "$market_options" )
 fi
 
+# Use gp3 volume for the root filesystem
+device_mappings='{"DeviceName":"/dev/sda1","Ebs":{"VolumeType":"gp3"}}'
 
 if test -n "$opt_additional_volume_size"; then
-    start_opts+=( --block-device-mappings "DeviceName=/dev/sdd,Ebs={DeleteOnTermination=true,VolumeSize=$opt_additional_volume_size,VolumeType=gp2}" )
+    device_mappings+=',{"DeviceName":"/dev/sdd","Ebs":{"VolumeSize":'
+    device_mappings+=$opt_additional_volume_size
+    device_mappings+=',"VolumeType":"gp3","DeleteOnTermination":true}}'
 fi
+
+start_opts+=( --block-device-mappings "[$device_mappings]" )
 
 aws_cmd=( "${aws[@]}" ec2 run-instances "${start_opts[@]}" )
 instance_id=$( run_cmd "${aws_cmd[@]}" )
