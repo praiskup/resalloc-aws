@@ -17,6 +17,8 @@ jobs:
       get-current-version:
         - bash -c "git describe --match resalloc-aws-[0-9]* --abbrev=0 HEAD | egrep -o [0-9]+\.[0-9]+"
     specfile_path: resalloc-aws.spec
+    srpm_build_deps:
+      - tito
     upstream_package_name: resalloc-aws
     downstream_package_name: resalloc-aws
     upstream_tag_template: 'resalloc-aws-{version}'
