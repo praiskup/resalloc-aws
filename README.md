@@ -24,6 +24,17 @@ project:
 - The '*-delete' script does it's best to remove the selected machine, even
   repetitively (to avoid paying for unused resources).
 
+
+Installation
+------------
+
+Just do: `$ dnf install resalloc-aws` (Fedora or EPEL).
+
+Pre-release RPMs are available in
+[`dnf copr enable praiskup/resalloc`](https://copr.fedorainfracloud.org/coprs/praiskup/resalloc/)
+repository.
+
+
 References
 ----------
 
