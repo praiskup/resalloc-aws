@@ -63,6 +63,8 @@ Options:
   --spot-price PRICE    Start a spot instance, instead of (default) on-demand,
                         with the given maximal price per hour.
   --playbook PLAYBOOK   Use this playbook, instead of the pre-configured one.
+  --root-volume-size GB
+                        Allocate root volume of given size.
   --additional-volume-size GB
                         Allocate additional volume of given size.
   --private-ip          This VM starts on private IP, work over private IP.
@@ -92,7 +94,7 @@ run_cmd()
 test "${#@}" -eq 0 && show_help 1
 
 long_opts="name:,ami:,initial-preparation,create-snapshot-image,help,spot-price:,\
-playbook:,private-ip,debug,additional-volume-size:,no-print-ip,aws-profile:,\
+playbook:,private-ip,debug,root-volume-size:,additional-volume-size:,no-print-ip,aws-profile:,\
 ssh-key-name:,security-group-id:,possible-subnet:,instance-type:,tag:"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
 
@@ -109,6 +111,7 @@ mandatory_options="
 eval set -- "$ARGS"
 
 opt_initial_preparation=false
+opt_root_volume_size=
 opt_additional_volume_size=
 opt_create_snapshot_image=false
 opt_ami=
@@ -145,7 +148,7 @@ while true; do
         show_help 0
         ;;
 
-    --name|--ami|--spot-price|--playbook|--additional-volume-size|\
+    --name|--ami|--spot-price|--playbook|--root-volume-size|--additional-volume-size|\
     --aws-profile|--ssh-key-name|--security-group-id|--instance-type)
         option_variable "$1"
         eval "$option_variable_result=\$2"
@@ -266,7 +269,14 @@ InstanceInterruptionBehavior=terminate,SpotInstanceType=one-time}"
 fi
 
 # Use gp3 volume for the root filesystem
-device_mappings='{"DeviceName":"/dev/sda1","Ebs":{"VolumeType":"gp3"}}'
+device_mappings='{"DeviceName":"/dev/sda1","Ebs":{"VolumeType":"gp3"'
+
+if test -n "$opt_root_volume_size"; then
+    device_mappings+=',"VolumeSize":'
+    device_mappings+=$opt_root_volume_size
+fi
+
+device_mappings+='}}'
 
 if test -n "$opt_additional_volume_size"; then
     device_mappings+=',{"DeviceName":"/dev/sdd","Ebs":{"VolumeSize":'
