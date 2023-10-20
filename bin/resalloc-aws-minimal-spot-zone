@@ -1,0 +1,35 @@
+#! /usr/bin/python3
+
+import boto3
+import argparse
+
+
+def _arg_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--region", required=True)
+    parser.add_argument("--instance-type", required=True)
+    return parser
+
+
+def _zone_names(client):
+    for z in client.describe_availability_zones()['AvailabilityZones']:
+        if z['State'] == 'available':
+            yield z['ZoneName']
+
+
+def _main():
+    opts = _arg_parser().parse_args()
+    client = boto3.client('ec2', region_name=opts.region)
+    for zone in _zone_names(client):
+        try:
+            price = client.describe_spot_price_history(
+                InstanceTypes=[opts.instance_type], MaxResults=1,
+                ProductDescriptions=["Linux/UNIX"],
+                AvailabilityZone=zone,
+            )['SpotPriceHistory'][0]['SpotPrice']
+
+            print("%s: %s" % (zone, price))
+        except IndexError: pass
+
+if __name__ == "__main__":
+    _main()
