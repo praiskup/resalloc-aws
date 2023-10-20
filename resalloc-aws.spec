@@ -45,6 +45,7 @@ mkdir -p %{buildroot}%{_bindir}
 install -p -m 0755 bin/resalloc-aws-new %{buildroot}%{_bindir}
 install -p -m 0755 bin/resalloc-aws-delete %{buildroot}%{_bindir}
 install -p -m 0755 bin/resalloc-aws-list %{buildroot}%{_bindir}
+install -p -m 0755 bin/resalloc-aws-minimal-spot-zone %{buildroot}%{_bindir}
 install -p -m 0755 %{name}-wait-for-ssh %{buildroot}%{_bindir}/resalloc-aws-wait-for-ssh
 
 
@@ -54,6 +55,7 @@ install -p -m 0755 %{name}-wait-for-ssh %{buildroot}%{_bindir}/resalloc-aws-wait
 %{_bindir}/%{name}-delete
 %{_bindir}/%{name}-new
 %{_bindir}/%{name}-list
+%{_bindir}/%{name}-minimal-spot-zone
 %{_bindir}/%{name}-wait-for-ssh
 
 
