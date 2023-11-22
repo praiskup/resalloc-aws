@@ -97,7 +97,7 @@ test -z "$opt_aws_profile" && fatal_args '--aws-profile required'
 test -z "$opt_pool" && fatal_args '$RESALLOC_POOL_ID or --pool required'
 
 tagsep=
-filters=()
+filters=(--filters 'Name=instance-state-name,Values=running,pending,shutting-down,stopping,stopped')
 tagspec_result=()
 tag_found=false
 for tag in "${opt_tag[@]}"; do
@@ -110,7 +110,7 @@ for tag in "${opt_tag[@]}"; do
     IFS=$old_IFS
 done
 if $tag_found; then
-    filters=( --filters "${tagspec_result[@]}" )
+    filters+=( "${tagspec_result[@]}" )
 fi
 
 cmd=(
