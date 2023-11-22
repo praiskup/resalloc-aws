@@ -321,7 +321,7 @@ run_cmd "$scriptdir/resalloc-aws-wait-for-ssh" \
 if test -n "$opt_playbook"; then
     playbook_opts=()
     $opt_initial_preparation && playbook_opts+=( "-e" "prepare_base_image=1" )
-    run_cmd ansible-playbook -i "$ip_address," "$opt_playbook" "${playbook_opts[@]}" >&2
+    run_cmd ansible-playbook -i "$ip_address," "$opt_playbook" "${playbook_opts[@]}" >&2 </dev/null
 fi
 
 if $opt_create_snapshot_image; then
