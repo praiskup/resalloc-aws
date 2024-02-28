@@ -1,6 +1,6 @@
 Name:       resalloc-aws
 Summary:    Resource allocator scripts for AWS
-Version:    1.7
+Version:    1.8
 Release:    1%{?dist}
 License:    GPLv2+
 URL:        https://github.com/praiskup/resalloc-aws
@@ -55,6 +55,9 @@ install -p -m 0755 bin/resalloc-aws-minimal-spot-zone %{buildroot}%{_bindir}
 
 
 %changelog
+* Wed Feb 28 2024 Pavel Raiskup <praiskup@redhat.com> 1.8-1
+- The wait-for-ssh script moved to resalloc-helpers
+
 * Thu Nov 23 2023 Pavel Raiskup <praiskup@redhat.com> 1.7-1
 - resalloc-aws-new: run playbook with stdin=/dev/null
 - resalloc-aws-list: no need to double-kill "shutting-down" instances
