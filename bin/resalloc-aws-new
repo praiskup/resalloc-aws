@@ -314,7 +314,7 @@ info "Instance IP: $ip_address"
 
 info "waiting for ssh ..."
 
-run_cmd "$scriptdir/resalloc-aws-wait-for-ssh" \
+run_cmd "$scriptdir/resalloc-wait-for-ssh" \
     --check-cloud-user --timeout 300 "$ip_address" \
     --log debug
 
