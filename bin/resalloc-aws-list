@@ -36,13 +36,14 @@ Options:
   --pool NAME           The name (id) of resalloc pool.
   --tag TAGNAME=VALUE   Filter the instances by this tag.
   --aws-profile         Name of the aws profile, as defined in ~/.aws/config.
+  --region              Region ID (might be set in aws-profile)
   --help                Print this help.
 EOHELP
 
 test -z "$1" || exit "$1"
 }
 
-long_opts="pool:,tag:,aws-profile:,help"
+long_opts="pool:,tag:,aws-profile:,help,region:"
 
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
 eval set -- "$ARGS"
@@ -64,6 +65,7 @@ option_variable()
 opt_aws_profile=default
 opt_pool=$RESALLOC_POOL_ID
 opt_tag=()
+opt_region=
 
 
 while true; do
@@ -73,7 +75,7 @@ while true; do
         show_help 0
         ;;
 
-    --pool|--aws-profile)
+    --pool|--aws-profile|--region)
         option_variable "$1"
         eval "$option_variable_result=\$2"
         shift 2
@@ -114,8 +116,14 @@ if $tag_found; then
     filters+=( "${tagspec_result[@]}" )
 fi
 
-cmd=(
+aws=(
     aws --profile $opt_aws_profile
+)
+
+test -n "$opt_region" && aws+=( --region "$opt_region" )
+
+cmd=(
+    "${aws[@]}"
     ec2 describe-instances
     "${filters[@]}"
     --output text

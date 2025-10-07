@@ -34,6 +34,7 @@ Options:
   --name NAME           Name of the started VM instance
   --ami IMAGE           Start the VM from this AMI.
   --aws-profile         Name of the aws profile, as defined in ~/.aws/config.
+  --region              Region ID (might be set in aws-profile)
   --ssh-key-name        Name of the uploaded SSH key uploaded to AWS.
   --security-group-id SGID
                         ID of the AWS security group to place this in (AWS
@@ -95,7 +96,7 @@ test "${#@}" -eq 0 && show_help 1
 
 long_opts="name:,ami:,initial-preparation,create-snapshot-image,help,spot-price:,\
 playbook:,private-ip,debug,root-volume-size:,additional-volume-size:,no-print-ip,aws-profile:,\
-ssh-key-name:,security-group-id:,possible-subnet:,instance-type:,tag:"
+ssh-key-name:,security-group-id:,possible-subnet:,instance-type:,tag:,region:"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
 
 mandatory_options="
@@ -121,6 +122,7 @@ opt_spot_price=
 opt_playbook=
 opt_private_ip=false
 opt_print_ip=true
+opt_region=
 opt_ssh_key_name=
 opt_security_group_id=
 opt_possible_subnet=()
@@ -149,7 +151,7 @@ while true; do
         ;;
 
     --name|--ami|--spot-price|--playbook|--root-volume-size|--additional-volume-size|\
-    --aws-profile|--ssh-key-name|--security-group-id|--instance-type)
+    --aws-profile|--ssh-key-name|--security-group-id|--instance-type|--region)
         option_variable "$1"
         eval "$option_variable_result=\$2"
         shift 2
@@ -197,6 +199,8 @@ aws=(
     aws --profile "$opt_aws_profile"
         --output text
 )
+
+test -n "$opt_region" && aws+=( --region "$opt_region" )
 
 debug "AWS base command '${aws[*]}'"
 
