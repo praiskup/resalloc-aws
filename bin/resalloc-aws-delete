@@ -31,6 +31,7 @@ Instead of --name, you can use \$RESALLOC_NAME env var.
 Options:
   --name NAME           Name of the VM to be stopped.
   --aws-profile         Name of the aws profile, as defined in ~/.aws/config.
+  --region              Region ID (might be set in aws-profile)
   --debug               Print debugging info.
 EOHELP
 
@@ -40,6 +41,7 @@ test -z "$1" || exit "$1"
 opt_debug=false
 opt_name=$RESALLOC_NAME
 opt_aws_profile=
+opt_region=
 
 info() { echo >&2 " * $*" ; }
 debug() { if $opt_debug; then echo >&2 " - $*" ; fi }
@@ -52,7 +54,7 @@ run_cmd()
     "$@"
 }
 
-long_opts="name:,aws-profile:,debug,help"
+long_opts="name:,aws-profile:,debug,help,region:"
 ARGS=$( getopt -o "h" -l "$long_opts" -n "getopt" -- "$@") || show_help 1
 
 mandatory_options="
@@ -83,7 +85,7 @@ while true; do
         show_help 0
         ;;
 
-    --name|--aws-profile)
+    --name|--aws-profile|--region)
         option_variable "$1"
         eval "$option_variable_result=\$2"
         shift 2
@@ -114,6 +116,7 @@ aws=(
         --output text
 )
 
+test -n "$opt_region" && aws+=( --region "$opt_region" )
 
 instance_id=$(
     run_cmd "${aws[@]}" ec2 describe-instances \
