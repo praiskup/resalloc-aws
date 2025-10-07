@@ -28,7 +28,6 @@ jobs:
 
   - <<: *copr
     trigger: commit
-    metadata:
-      owner: "praiskup"
-      project: "resalloc"
-      branch: main
+    owner: "praiskup"
+    project: "resalloc"
+    branch: main
