@@ -1,6 +1,6 @@
 Name:       resalloc-aws
 Summary:    Resource allocator scripts for AWS
-Version:    1.8
+Version:    1.9
 Release:    1%{?dist}
 License:    GPLv2+
 URL:        https://github.com/praiskup/resalloc-aws
@@ -55,6 +55,9 @@ install -p -m 0755 bin/resalloc-aws-minimal-spot-zone %{buildroot}%{_bindir}
 
 
 %changelog
+* Wed Oct 08 2025 Pavel Raiskup <praiskup@redhat.com> 1.9-1
+- Allow overriding the region that is set in ~/.aws/config (praiskup@redhat.com)
+
 * Wed Feb 28 2024 Pavel Raiskup <praiskup@redhat.com> 1.8-1
 - The wait-for-ssh script moved to resalloc-helpers
 
