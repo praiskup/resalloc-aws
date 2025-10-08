@@ -2,7 +2,7 @@ Name:       resalloc-aws
 Summary:    Resource allocator scripts for AWS
 Version:    1.9
 Release:    1%{?dist}
-License:    GPLv2+
+License:    GPL-2.0-or-later
 URL:        https://github.com/praiskup/resalloc-aws
 BuildArch:  noarch
 
